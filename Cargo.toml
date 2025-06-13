@@ -45,6 +45,7 @@ wit-bindgen-rust = { path = "crates/rust", version = "0.42.1" }
 wit-bindgen-csharp = { path = 'crates/csharp', version = '0.42.1' }
 wit-bindgen-markdown = { path = 'crates/markdown', version = '0.42.1' }
 wit-bindgen-moonbit = { path = 'crates/moonbit', version = '0.42.1' }
+wit-bindgen-nim = { path = 'crates/nim', version = '0.42.1' }
 wit-bindgen = { path = 'crates/guest-rust', version = '0.42.1', default-features = false }
 wit-bindgen-test = { path = 'crates/test', version = '0.42.1' }
 
@@ -57,24 +58,19 @@ clap = { workspace = true, features = ['wrap_help'] }
 wit-bindgen-core = { workspace = true }
 wit-bindgen-rust = { workspace = true, features = ['clap'], optional = true }
 wit-bindgen-c = { workspace = true, features = ['clap'], optional = true }
-wit-bindgen-markdown = { workspace = true, features = ['clap'], optional = true }
+wit-bindgen-markdown = { workspace = true, features = [
+    'clap',
+], optional = true }
 wit-bindgen-moonbit = { workspace = true, features = ['clap'], optional = true }
 wit-bindgen-csharp = { workspace = true, features = ['clap'], optional = true }
+wit-bindgen-nim = { workspace = true, features = ['clap'], optional = true }
 wit-bindgen-test = { workspace = true }
 wit-component = { workspace = true }
 wasm-encoder = { workspace = true }
 env_logger = "0.11.7"
 
 [features]
-default = [
-  'c',
-  'rust',
-  'markdown',
-  'go',
-  'csharp',
-  'moonbit',
-  'async',
-]
+default = ['c', 'rust', 'markdown', 'go', 'csharp', 'moonbit', 'nim', 'async']
 c = ['dep:wit-bindgen-c']
 rust = ['dep:wit-bindgen-rust']
 markdown = ['dep:wit-bindgen-markdown']
@@ -82,6 +78,7 @@ go = []
 csharp = ['dep:wit-bindgen-csharp']
 csharp-mono = ['csharp']
 moonbit = ['dep:wit-bindgen-moonbit']
+nim = ['dep:wit-bindgen-nim']
 async = []
 
 # TODO: remove this once

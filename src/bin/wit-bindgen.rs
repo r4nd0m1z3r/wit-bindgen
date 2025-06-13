@@ -30,6 +30,14 @@ enum Opt {
         #[clap(flatten)]
         args: Common,
     },
+    /// Generates bindings for Nim guest modules.
+    #[cfg(feature = "nim")]
+    Nim {
+        #[clap(flatten)]
+        opts: wit_bindgen_nim::Opts,
+        #[clap(flatten)]
+        args: Common,
+    },
     /// Generates bindings for Rust guest modules.
     #[cfg(feature = "rust")]
     Rust {
@@ -124,6 +132,8 @@ fn main() -> Result<()> {
     let (generator, opt) = match Opt::parse() {
         #[cfg(feature = "markdown")]
         Opt::Markdown { opts, args } => (opts.build(), args),
+        #[cfg(feature = "nim")]
+        Opt::Nim { opts, args } => (opts.build(), args),
         #[cfg(feature = "moonbit")]
         Opt::Moonbit { opts, args } => (opts.build(), args),
         #[cfg(feature = "c")]
