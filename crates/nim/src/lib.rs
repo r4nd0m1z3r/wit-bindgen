@@ -22,6 +22,9 @@ struct Nim {
     handles: Vec<nim::Handle>,
     flags: Vec<nim::Flags>,
     tuples: Vec<nim::Tuple>,
+    variants: Vec<nim::Variant>,
+    enums: Vec<nim::Enum>,
+    options: Vec<nim::Option>,
 }
 
 impl Nim {
@@ -71,6 +74,24 @@ impl Nim {
         self.tuples.push(tuple);
         Ok(())
     }
+
+    fn add_variant(&mut self, resolve: &Resolve, id: TypeId) -> anyhow::Result<()> {
+        let variant = nim::Variant::new(resolve, id)?;
+        self.variants.push(variant);
+        Ok(())
+    }
+
+    fn add_enum(&mut self, resolve: &Resolve, id: TypeId) -> anyhow::Result<()> {
+        let r#enum = nim::Enum::new(resolve, id)?;
+        self.enums.push(r#enum);
+        Ok(())
+    }
+
+    fn add_option(&mut self, resolve: &Resolve, id: TypeId) -> anyhow::Result<()> {
+        let option = nim::Option::new(resolve, id)?;
+        self.options.push(option);
+        Ok(())
+    }
 }
 
 impl WorldGenerator for Nim {
@@ -85,15 +106,15 @@ impl WorldGenerator for Nim {
 
         for (id, def) in &resolve.types {
             match &def.kind {
-                TypeDefKind::Record(record) => self.add_record(resolve, id)?,
+                TypeDefKind::Record(_) => self.add_record(resolve, id)?,
                 TypeDefKind::Resource => self.add_resource(resolve, id)?,
-                TypeDefKind::Handle(handle) => self.add_handle(resolve, id)?,
-                TypeDefKind::Flags(flags) => self.add_flags(resolve, id)?,
-                TypeDefKind::Tuple(tuple) => self.add_tuple(resolve, id)?,
-                TypeDefKind::Variant(variant) => todo!(),
-                TypeDefKind::Enum(_) => todo!(),
-                TypeDefKind::Option(_) => todo!(),
-                TypeDefKind::Result(result) => todo!(),
+                TypeDefKind::Handle(_) => self.add_handle(resolve, id)?,
+                TypeDefKind::Flags(_) => self.add_flags(resolve, id)?,
+                TypeDefKind::Tuple(_) => self.add_tuple(resolve, id)?,
+                TypeDefKind::Variant(_) => self.add_variant(resolve, id)?,
+                TypeDefKind::Enum(_) => self.add_enum(resolve, id)?,
+                TypeDefKind::Option(_) => self.add_option(resolve, id)?,
+                TypeDefKind::Result(_) => todo!(),
                 TypeDefKind::List(_) => todo!(),
                 TypeDefKind::FixedSizeList(_, _) => todo!(),
                 TypeDefKind::Future(_) => todo!(),

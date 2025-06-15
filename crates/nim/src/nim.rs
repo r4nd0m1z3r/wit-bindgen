@@ -1,6 +1,6 @@
-use anyhow::anyhow;
+use anyhow::{anyhow, Ok};
 use heck::{ToLowerCamelCase, ToPascalCase};
-use wit_bindgen_core::wit_parser::{FlagsRepr, Resolve, Type, TypeDefKind, TypeId};
+use wit_bindgen_core::wit_parser::{Case, FlagsRepr, Resolve, Type, TypeDefKind, TypeId};
 
 fn nim_type_name(resolve: &Resolve, ty: Type) -> anyhow::Result<String> {
     match ty {
@@ -218,7 +218,9 @@ impl Tuple {
             return Err(anyhow!("Type {:?} is not a tuple", self.id));
         };
 
-        let mut output = name.map(|name| format!("type {name} {{.exportc.}} = tuple[")).unwrap_or("tuple[".to_string());
+        let mut output = name
+            .map(|name| format!("type {name} {{.exportc.}} = tuple["))
+            .unwrap_or("tuple[".to_string());
         for (index, &ty) in tuple.types.iter().enumerate() {
             let ty_name = nim_type_name(resolve, ty)?;
             output.push_str(&format!("`{index}`: {ty_name},"));
@@ -226,5 +228,146 @@ impl Tuple {
         output.push(']');
 
         Ok(output)
-    };
+    }
+}
+
+pub struct Variant {
+    from: *const Resolve,
+    id: TypeId,
+}
+
+impl Variant {
+    pub fn new(resolve: &Resolve, id: TypeId) -> anyhow::Result<Self> {
+        if let Some(TypeDefKind::Variant(_)) = resolve.types.get(id).map(|ty| &ty.kind) {
+            Ok(Self { from: resolve, id })
+        } else {
+            Err(anyhow!("Type {id:?} is not a variant"))
+        }
+    }
+
+    pub fn tag_type_string(
+        &self,
+        name: &str,
+        cases: &[Case],
+        resolve: &Resolve,
+    ) -> anyhow::Result<String> {
+        let cases_str = cases
+            .iter()
+            .map(|case| format!("{}, ", &case.name.to_pascal_case()))
+            .collect::<String>();
+
+        Ok(format!(
+            "type {name}Kind {{.exportc.}} = enum\n  {cases_str}"
+        ))
+    }
+
+    pub fn to_string(&self, resolve: &Resolve) -> anyhow::Result<String> {
+        if self.from != resolve {
+            return Err(anyhow!("Variant is from a different resolve"));
+        }
+
+        let variant_def = &resolve.types[self.id];
+        let name = variant_def
+            .name
+            .as_ref()
+            .ok_or(anyhow!("Variant {:?} has no name", self.id))?;
+
+        let variant = if let TypeDefKind::Variant(variant) = &variant_def.kind {
+            variant
+        } else {
+            return Err(anyhow!("Type {:?} is not a variant", self.id));
+        };
+
+        let mut output = self.tag_type_string(name, &variant.cases, resolve)?;
+        output.push_str(&format!("\ntype {name} {{.exportc.}} = object"));
+        output.push_str(&format!("  case kind: {name}Kind"));
+
+        for case in &variant.cases {
+            let case_name = case.name.to_pascal_case();
+            let ty_name = case
+                .ty
+                .map(|ty| nim_type_name(resolve, ty))
+                .unwrap_or(Ok("void".to_string()))?;
+
+            output.push_str(&format!("    of {case_name}: \n      value: {ty_name}"));
+        }
+
+        Ok(output)
+    }
+}
+
+pub struct Enum {
+    from: *const Resolve,
+    id: TypeId,
+}
+
+impl Enum {
+    pub fn new(resolve: &Resolve, id: TypeId) -> anyhow::Result<Self> {
+        if let Some(TypeDefKind::Enum(_)) = resolve.types.get(id).map(|ty| &ty.kind) {
+            Ok(Self { from: resolve, id })
+        } else {
+            Err(anyhow!("Type {id:?} is not an enum"))
+        }
+    }
+
+    pub fn to_string(&self, resolve: &Resolve) -> anyhow::Result<String> {
+        if self.from != resolve {
+            return Err(anyhow!("Enum is from different resolve"));
+        }
+
+        let enum_def = &resolve.types[self.id];
+        let name = enum_def
+            .name
+            .as_ref()
+            .ok_or(anyhow!("Enum {:?} has no name", self.id))?;
+
+        let r#enum = if let TypeDefKind::Enum(r#enum) = &enum_def.kind {
+            r#enum
+        } else {
+            return Err(anyhow!("Type {:?} is not an enum", self.id));
+        };
+
+        let cases_str = r#enum
+            .cases
+            .iter()
+            .map(|case| format!("{}, ", &case.name.to_pascal_case()))
+            .collect::<String>();
+
+        Ok(format!("type {name} {{.exportc.}} = enum\n  {cases_str}"))
+    }
+}
+
+pub struct Option {
+    from: *const Resolve,
+    id: TypeId,
+}
+
+impl Option {
+    pub fn new(resolve: &Resolve, id: TypeId) -> anyhow::Result<Self> {
+        if let Some(TypeDefKind::Option(_)) = resolve.types.get(id).map(|ty| &ty.kind) {
+            Ok(Self { from: resolve, id })
+        } else {
+            Err(anyhow!("Type {id:?} is not an enum"))
+        }
+    }
+
+    pub fn to_string(&self, resolve: &Resolve) -> anyhow::Result<String> {
+        if self.from != resolve {
+            return Err(anyhow!("Option is from different resolve"));
+        }
+
+        let option_def = &resolve.types[self.id];
+        let name = option_def
+            .name
+            .as_ref()
+            .ok_or(anyhow!("Option {:?} has no name", self.id))?;
+
+        let &option = if let TypeDefKind::Option(option) = &option_def.kind {
+            option
+        } else {
+            return Err(anyhow!("Type {:?} is not an option", self.id));
+        };
+
+        Ok(format!("Option[{}]", nim_type_name(resolve, option)?))
+    }
 }
