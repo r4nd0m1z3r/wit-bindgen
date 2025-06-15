@@ -147,14 +147,13 @@ impl Flags {
 
         let flags_def = &resolve.types[self.id];
         if let TypeDefKind::Flags(flags) = &flags_def.kind {
-            let repr_ty = match flags.repr() {
-                FlagsRepr::U8 => Type::U8,
-                FlagsRepr::U16 => Type::U16,
-                FlagsRepr::U32(1) => Type::U32,
-                FlagsRepr::U32(2) => Type::U64,
-                FlagsRepr::U32(n) => todo!("Generate type to represent flags with U32*{n} options"),
-            };
-            nim_type_name(resolve, repr_ty)
+            match flags.repr() {
+                FlagsRepr::U8 => nim_type_name(resolve, Type::U8),
+                FlagsRepr::U16 => nim_type_name(resolve, Type::U16),
+                FlagsRepr::U32(1) => nim_type_name(resolve, Type::U32),
+                FlagsRepr::U32(2) => nim_type_name(resolve, Type::U64),
+                FlagsRepr::U32(n) => Ok(format!("array[{n}, uint32]")),
+            }
         } else {
             Err(anyhow!("Type {:?} is not flags", self.id))
         }
