@@ -371,3 +371,154 @@ impl Option {
         Ok(format!("Option[{}]", nim_type_name(resolve, option)?))
     }
 }
+
+pub struct Result {
+    from: *const Resolve,
+    id: TypeId,
+}
+
+impl Result {
+    pub fn new(resolve: &Resolve, id: TypeId) -> anyhow::Result<Self> {
+        if let Some(TypeDefKind::Result(_)) = resolve.types.get(id).map(|ty| &ty.kind) {
+            Ok(Self { from: resolve, id })
+        } else {
+            Err(anyhow!("Type {id:?} is not a result"))
+        }
+    }
+
+    pub fn to_string(&self, resolve: &Resolve) -> anyhow::Result<String> {
+        if self.from != resolve {
+            return Err(anyhow!("Result is from different resolve"));
+        }
+
+        let result_def = &resolve.types[self.id];
+        let name = result_def
+            .name
+            .as_ref()
+            .ok_or(anyhow!("Result {:?} has no name", self.id))?;
+
+        let result = if let TypeDefKind::Result(result) = &result_def.kind {
+            result
+        } else {
+            return Err(anyhow!("Type {:?} is not an option", self.id));
+        };
+
+        Ok(format!(
+            "Result[{}, {}]",
+            nim_type_name(resolve, result.ok.unwrap_or(Type::Bool))?,
+            nim_type_name(resolve, result.err.unwrap_or(Type::Bool))?
+        ))
+    }
+}
+
+pub struct List {
+    from: *const Resolve,
+    id: TypeId,
+}
+
+impl List {
+    pub fn new(resolve: &Resolve, id: TypeId) -> anyhow::Result<Self> {
+        if let Some(TypeDefKind::List(_)) = resolve.types.get(id).map(|ty| &ty.kind) {
+            Ok(Self { from: resolve, id })
+        } else {
+            Err(anyhow!("Type {id:?} is not a list"))
+        }
+    }
+
+    pub fn to_string(&self, resolve: &Resolve) -> anyhow::Result<String> {
+        if self.from != resolve {
+            return Err(anyhow!("List is from different resolve"));
+        }
+
+        let list_def = &resolve.types[self.id];
+        let name = list_def
+            .name
+            .as_ref()
+            .ok_or(anyhow!("List {:?} has no name", self.id))?;
+
+        let &inner_ty = if let TypeDefKind::List(inner_ty) = &list_def.kind {
+            inner_ty
+        } else {
+            return Err(anyhow!("Type {:?} is not a list", self.id));
+        };
+
+        Ok(format!("seq[{}]", nim_type_name(resolve, inner_ty)?))
+    }
+}
+
+pub struct FixedList {
+    from: *const Resolve,
+    id: TypeId,
+}
+
+impl FixedList {
+    pub fn new(resolve: &Resolve, id: TypeId) -> anyhow::Result<Self> {
+        if let Some(TypeDefKind::FixedSizeList(_, _)) = resolve.types.get(id).map(|ty| &ty.kind) {
+            Ok(Self { from: resolve, id })
+        } else {
+            Err(anyhow!("Type {id:?} is not a fixed-size list"))
+        }
+    }
+
+    pub fn to_string(&self, resolve: &Resolve) -> anyhow::Result<String> {
+        if self.from != resolve {
+            return Err(anyhow!("FixedList is from different resolve"));
+        }
+
+        let list_def = &resolve.types[self.id];
+        let name = list_def
+            .name
+            .as_ref()
+            .ok_or(anyhow!("FixedList {:?} has no name", self.id))?;
+
+        let (inner_ty, &list_len) =
+            if let TypeDefKind::FixedSizeList(inner_ty, list_len) = &list_def.kind {
+                (*inner_ty, list_len)
+            } else {
+                return Err(anyhow!("Type {:?} is not a fixed-size list", self.id));
+            };
+
+        Ok(format!(
+            "array[{list_len}, {}]",
+            nim_type_name(resolve, inner_ty)?
+        ))
+    }
+}
+
+pub struct AliasType {
+    from: *const Resolve,
+    id: TypeId,
+}
+
+impl AliasType {
+    pub fn new(resolve: &Resolve, id: TypeId) -> anyhow::Result<Self> {
+        if let Some(TypeDefKind::Type(_)) = resolve.types.get(id).map(|ty| &ty.kind) {
+            Ok(Self { from: resolve, id })
+        } else {
+            Err(anyhow!("Type {id:?} is not a type"))
+        }
+    }
+
+    pub fn to_string(&self, resolve: &Resolve) -> anyhow::Result<String> {
+        if self.from != resolve {
+            return Err(anyhow!("Type is from different resolve"));
+        }
+
+        let type_def = &resolve.types[self.id];
+        let name = type_def
+            .name
+            .as_ref()
+            .ok_or(anyhow!("Type {:?} has no name", self.id))?;
+
+        let &inner_ty = if let TypeDefKind::Type(inner_ty) = &type_def.kind {
+            inner_ty
+        } else {
+            return Err(anyhow!("Type {:?} is not a type", self.id));
+        };
+
+        Ok(format!(
+            "type {name} = {}",
+            nim_type_name(resolve, inner_ty)?
+        ))
+    }
+}

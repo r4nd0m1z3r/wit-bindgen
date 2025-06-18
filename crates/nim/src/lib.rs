@@ -25,6 +25,10 @@ struct Nim {
     variants: Vec<nim::Variant>,
     enums: Vec<nim::Enum>,
     options: Vec<nim::Option>,
+    results: Vec<nim::Result>,
+    lists: Vec<nim::List>,
+    fixed_lists: Vec<nim::FixedList>,
+    alias_types: Vec<nim::AliasType>,
 }
 
 impl Nim {
@@ -92,6 +96,30 @@ impl Nim {
         self.options.push(option);
         Ok(())
     }
+
+    fn add_result(&mut self, resolve: &Resolve, id: TypeId) -> anyhow::Result<()> {
+        let result = nim::Result::new(resolve, id)?;
+        self.results.push(result);
+        Ok(())
+    }
+
+    fn add_list(&mut self, resolve: &Resolve, id: TypeId) -> anyhow::Result<()> {
+        let list = nim::List::new(resolve, id)?;
+        self.lists.push(list);
+        Ok(())
+    }
+
+    fn add_fixed_list(&mut self, resolve: &Resolve, id: TypeId) -> anyhow::Result<()> {
+        let fixed_list = nim::FixedList::new(resolve, id)?;
+        self.fixed_lists.push(fixed_list);
+        Ok(())
+    }
+
+    fn add_alias_type(&mut self, resolve: &Resolve, id: TypeId) -> anyhow::Result<()> {
+        let alias_type = nim::AliasType::new(resolve, id)?;
+        self.alias_types.push(alias_type);
+        Ok(())
+    }
 }
 
 impl WorldGenerator for Nim {
@@ -114,17 +142,17 @@ impl WorldGenerator for Nim {
                 TypeDefKind::Variant(_) => self.add_variant(resolve, id)?,
                 TypeDefKind::Enum(_) => self.add_enum(resolve, id)?,
                 TypeDefKind::Option(_) => self.add_option(resolve, id)?,
-                TypeDefKind::Result(_) => todo!(),
-                TypeDefKind::List(_) => todo!(),
-                TypeDefKind::FixedSizeList(_, _) => todo!(),
+                TypeDefKind::Result(_) => self.add_result(resolve, id)?,
+                TypeDefKind::List(_) => self.add_list(resolve, id)?,
+                TypeDefKind::FixedSizeList(_, _) => self.add_fixed_list(resolve, id)?,
                 TypeDefKind::Future(_) => todo!(),
                 TypeDefKind::Stream(_) => todo!(),
-                TypeDefKind::Type(_) => todo!(),
+                TypeDefKind::Type(_) => self.add_alias_type(resolve, id)?,
                 TypeDefKind::Unknown => {}
             }
         }
 
-        Err(anyhow!("import_interface: Unimplemented"))
+        Ok(())
     }
 
     fn export_interface(
